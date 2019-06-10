@@ -22,8 +22,8 @@ looks like this:
 [
   {
     "targets": [
-      "192.168.122.190:8181",
-      "192.168.122.41:8181"
+      "myorg.vmhost1.com:9000",
+      "myorg.vmhost2.com:9000"
     ],
     "labels": {
       "cluster": "0294d770-70c0-4b99-a527-f8a4ff4de436"
