@@ -19,6 +19,23 @@ type Targets struct {
 	Labels  map[string]string `json:"labels"`
 }
 
+
+type Vms struct {
+	Vm []Vm
+}
+
+type Vm struct {
+	Fqdn string
+	Id string
+	Domain Domain
+	Cluster Cluster
+}
+
+type Domain struct{
+	Name string
+}
+
+
 type Hosts struct {
 	Host []Host
 }
@@ -51,7 +68,7 @@ func main() {
 	noVerify := flag.Bool("no-verify", false, "Don't verify the engine certificate")
 	engineCa := flag.String("engine-ca", "/etc/pki/ovirt-engine/ca.pem", "Path to engine ca certificate")
 	updateInterval := flag.Int("update-interval", 60, "Update intervall for host discovery in seconds")
-	targetPort := flag.Int("host-port", 8181, "Port where Prometheus metrics are exposed on the hosts")
+	targetPort := flag.Int("host-port", 9000, "Port where Prometheus metrics are exposed on the hosts")
 	flag.Parse()
 	if *enginePassword == "" {
 		*enginePassword = os.Getenv("ENGINE_PASSWORD")
@@ -92,11 +109,10 @@ func main() {
 }
 
 func Discover(client *http.Client, config *Config) {
-	req, err := http.NewRequest("GET", config.URL+"/ovirt-engine/api/hosts", nil)
+	req, err := http.NewRequest("GET", config.URL+"/ovirt-engine/api/vms", nil)
 	check(err)
 	req.Header.Add("Accept", "application/json")
 	req.SetBasicAuth(config.User, config.Password)
-
 	data := make(chan []byte)
 	done := writeTargets(config.Target, MapToTarget(config.TargetPort, ParseJson(data)))
 	go func() {
@@ -122,12 +138,12 @@ func Discover(client *http.Client, config *Config) {
 	<-done
 }
 
-func ParseJson(data chan []byte) chan *Hosts {
-	hostsChan := make(chan *Hosts)
+func ParseJson(data chan []byte) chan *Vms {
+	hostsChan := make(chan *Vms)
 	go func() {
 		defer close(hostsChan)
 		for msg := range data {
-			hosts := new(Hosts)
+			hosts := new(Vms)
 			err := json.Unmarshal(msg, hosts)
 			if err != nil {
 				log.Print(err)
@@ -139,20 +155,21 @@ func ParseJson(data chan []byte) chan *Hosts {
 	return hostsChan
 }
 
-func MapToTarget(targetPort int, hosts chan *Hosts) chan []*Targets {
+func MapToTarget(targetPort int, hosts chan *Vms) chan []*Targets {
 	targetsChan := make(chan []*Targets)
 	go func() {
 		defer close(targetsChan)
 		for msg := range hosts {
 			targetMap := make(map[string]*Targets)
 			var targets []*Targets
-			for _, host := range msg.Host {
-				if value, ok := targetMap[host.Cluster.Id]; ok {
-					value.Targets = append(value.Targets, host.Address+":"+strconv.Itoa(targetPort))
+			for _, host := range msg.Vm {
+				if (len(host.Fqdn)==0)||!(strings.Contains(host.Fqdn,"."))  { //Remove templates and VMs with no fqdn. Better way to do this?
+				} else if value, ok := targetMap[host.Cluster.Id];ok {
+					value.Targets = append(value.Targets, host.Fqdn+":"+strconv.Itoa(targetPort))
 				} else {
 					targetMap[host.Cluster.Id] = &Targets{
 						Labels:  map[string]string{"cluster": host.Cluster.Id},
-						Targets: []string{host.Address + ":" + strconv.Itoa(targetPort)}}
+						Targets: []string{host.Fqdn + ":" + strconv.Itoa(targetPort)}}
 					targets = append(targets, targetMap[host.Cluster.Id])
 				}
 			}

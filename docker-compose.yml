@@ -1,5 +1,5 @@
-ovirt-prometheus-bridge:
-  image: rmohr/ovirt-prometheus-bridge
+ovirt-vm-prometheus-bridge:
+  image: igou/ovirt-vm-prometheus-bridge
   volumes:
     - /targets
   command: ["-no-verify", "-engine-url=${ENGINE_HOST}", "-output=/targets/hosts.json"]
@@ -13,7 +13,7 @@ prometheus:
   ports:
     - "9090:9090"
   volumes_from:
-    - ovirt-prometheus-bridge
+    - ovirt-vm-prometheus-bridge
 grafana:
   image: grafana/grafana
   ports:

@@ -14,7 +14,7 @@ scrape_configs:
         labels:
           group: 'prometheus'
 
-  - job_name: 'vdsm'
+  - job_name: 'ovirt-vm-node-exporter'
 
     scrape_interval: 5s
     file_sd_configs:

@@ -1,16 +1,18 @@
-# ovirt-prometheus-bridge
+# ovirt-vm-prometheus-bridge
 
-`ovirt-prometheus-bridge` is a host autodiscovery service for Prometheus
+This is a fork and modification of `rmohr/ovirt-prometheus-bridge` - to
+support VM service discovery over the ovirt hosts themselves. 
+
+`ovirt-vm-prometheus-bridge` is a host autodiscovery service for Prometheus
 targets. It can be used to query oVirt Engine for hosts. The result is stored
 in a json file which Prometheus can use to find scrape targets. Prometheus will
-then start collecting metrics from all hosts in your virtual datacenter where
-[vdsm-prometheus](https://github.com/rmohr/vdsm-prometheus) is installed.
+then start collecting metrics from port you declare. In the example context Prometheus
+scrapes attempts to scrape `node-exporter` listening on 9000..
 
-[![Build Status](https://travis-ci.org/rmohr/ovirt-prometheus-bridge.svg?branch=master)](https://travis-ci.org/rmohr/ovirt-prometheus-bridge)
 
 In this example
 ```bash
-docker run -e ENGINE_PASSWORD=engine -v $PWD:/targets rmohr/ovirt-prometheus-bridge -update-interval 60 -no-verify -engine-url=https://localhost:8443 -output /targets/targets.json
+docker run -e ENGINE_PASSWORD=engine -v $PWD:/targets igou/ovirt-vm-prometheus-bridge -update-interval 60 -no-verify -engine-url=https://my.rhev.engine:8443 -output /targets/targets.json
 ```
 the service is querying the oVirt Engine API every 60 seconds and writes the
 found hosts into the file `targets.json`.  The created file `targets.json`
@@ -50,41 +52,8 @@ scrape_configs:
         labels:
           group: 'prometheus'
 
-  - job_name: 'vdsm'
+  - job_name: 'ovirt-vm-node-exporter'
 
-    scrape_interval: 5s
-    file_sd_configs:
-      - names : ['/targets/*.json']
-```
-
-Here is another example Prometheus config which uses TLS to communicate with
-[vdsm-prometheus](https://github.com/rmohr/vdsm-prometheus):
-
-```yaml
-global:
-  scrape_interval: 15s
-
-  external_labels:
-    monitor: 'ovirt'
-
-scrape_configs:
-  - job_name: 'prometheus'
-
-    scrape_interval: 10s
-
-    target_groups:
-      - targets: ['localhost:9090']
-        labels:
-          group: 'prometheus'
-
-  - job_name: 'vdsm'
-
-    scheme: 'https'
-    tls_config:
-      ca_file: '/etc/pki/prom/certs/cacert.pem'
-      cert_file: '/etc/pki/prom/certs/promcert.pem'
-      key_file: '/etc/pki/prom/certs/promkey.pem'
-      insecure_skip_verify: false
     scrape_interval: 5s
     file_sd_configs:
       - names : ['/targets/*.json']
@@ -92,7 +61,7 @@ scrape_configs:
 
 # Quick start
 
-To quickly spawn ovirt-prometheus-bridge, Prometheus and Grafana you can use
+To quickly spawn ovirt-vm-prometheus-bridge, Prometheus and Grafana you can use
 the Docker compose file in this repository:
 
 ```bash
@@ -108,6 +77,6 @@ curl -X POST -H "Accept: application/json" -H "Content-Type: application/json" -
 ```
 
 Prometheus will then listen on [localhost:9090](http://localhost:9090), Grafana
-on [localhost:3000](http://localhost:3000) and ovirt-prometheus-bridge will
+on [localhost:3000](http://localhost:3000) and ovirt-vm-prometheus-bridge will
 provide the scrape targets. The default credentials for Grafana are
 `admin:admin`.
